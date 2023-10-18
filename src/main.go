@@ -2,6 +2,7 @@ package main
 
 import (
   "fmt"
+  "time"
   "errors"
 )
 
@@ -82,6 +83,26 @@ func matrixSub(a,b Matrix) (Matrix, error) {
       mat: dif,
     }, nil
   }
+}
+
+func matrixMult(a,b Matrix) (Matrix, error) {
+  if a.n != b.m {
+    return Matrix{}, errors.New("\n[ERROR] Incompatible matrix dimensions for multiplication")
+  }
+  result := make([][]int, a.m)
+  for i := 0; i < a.m; i++ {
+    result[i] = make([]int, b.n)
+    for j := 0; j < b.n; j++ {
+      for k := 0; k < a.n; k++ {
+	      result[i][j] += a.mat[i][k] * b.mat[k][j]
+      }
+    }
+  }
+  return Matrix{
+    m: a.m,
+    n: b.n,
+    mat: result,
+  }, nil
 }
 
 func runMatrixTest() {
@@ -179,10 +200,43 @@ func runMatrixTest() {
     fmt.Println(err)
   } else {
     fmt.Println("\nValid Difference Result 2 (B-A): ", difMat0)
-    printMatrix(difMat)
+    printMatrix(difMat0)
+  }
+  data1 := [][]int {
+    {0, 1, 2},
+    {3, 4, 5},
+  }
+  data2 := [][]int {
+    {0, 1},
+    {2, 3},
+    {4, 5},
+  }
+  goodMat1, err := makeMatrix(data1)
+  if err != nil {
+    fmt.Println(err)
+  } else {
+    fmt.Println("\nValid Matrix struct{} (C): ", goodMat1)
+    printMatrix(goodMat1)
+  }
+  goodMat2, err := makeMatrix(data2)
+  if err != nil {
+    fmt.Println(err)
+  } else {
+    fmt.Println("\nValid Matrix{} struct (D): ", goodMat2)
+  }
+  multMat, err := matrixMult(goodMat1, goodMat2)
+  if err != nil {
+    fmt.Println(err)
+  } else {
+    fmt.Println("\nValid Multiplication Result (C*D):")
+    printMatrix(multMat)
   }
 }
 
 func main() {
+  start := time.Now()
   runMatrixTest()
+  end := time.Now()
+  timeDelta := end.Sub(start).Nanoseconds()
+  fmt.Printf("Execution time: %d nanoseconds", timeDelta)
 }
