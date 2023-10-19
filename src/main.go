@@ -3,6 +3,7 @@ package main
 import (
   "fmt"
   "time"
+  "math"
   "errors"
 )
 
@@ -96,6 +97,10 @@ func matrixMult(a,b Matrix) (Matrix, error) {
       result[i][j] = 0.0
       for k := 0; k < a.n; k++ {
 	      result[i][j] += a.mat[i][k] * b.mat[k][j]
+      }
+      rounded := math.Round(result[i][j]*1e11)/1e11
+      if math.Abs(rounded) < 1e-11 {
+        result[i][j] = 0.0
       }
     }
   }
@@ -366,9 +371,10 @@ func runMatrixTest() {
   fmt.Println("\nProduct of E * Inverse of E: ", shouldBeId)
   printMatrix(shouldBeId)
   dataF := [][]float64 {
-    {7.0, -3.0, -3.0},
-    {-1.0, 1.0, 0.0},
-    {-1.0, 0.0, 1.0},
+    {1.0, 2.0, -1.0, 0.0},
+    {0.0, 5.0, 3.0, 0.0},
+    {-2.0, 0.0, 0.0, 4.0},
+    {0.0, 6.0, -4.0, -3.0},
   }
   goodMatF, err := makeMatrix(dataF)
   if err != nil {
