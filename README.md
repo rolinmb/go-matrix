@@ -1,5 +1,5 @@
-Matrix data structure in go
+Matrix data structure in go with relevant functions
 
 compile and run: cd src && go build -o main && ./main
 
-TODO: change from int to float64 data type
+TODO: write tests for QR-Algorithm (finding eigenvals/eigenvectors)

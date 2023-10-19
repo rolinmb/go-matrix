@@ -48,6 +48,120 @@ func makeMatrix(data [][]float64) (Matrix, error) {
   }
 }
 
+func matrixTranspose(mtrx Matrix) Matrix {
+  result := make([][]float64, mtrx.n)
+  for i := 0; i < mtrx.n; i++ {
+    col := make([]float64, mtrx.m)
+    for j := 0; j < mtrx.m; j++ {
+      col[j] = mtrx.mat[j][i]
+    }
+    result[i] = col
+  }
+  return Matrix{
+    m: mtrx.n,
+    n: mtrx.m,
+    mat: result,
+  }
+}
+
+func qrDecomp(mtrx Matrix) (Matrix, Matrix) {
+  Q := make([][]float64, mtrx.m)
+  R := make([][]float64, mtrx.n)
+  for i := 0; i < mtrx.m; i++ {
+    Q[i] = make([]float64, mtrx.n)
+    R[i] = make([]float64, mtrx.n)
+  }
+  // Gram-Schmidt Process for QR-Decomposition
+  for j := 0; j < mtrx.n; j++ {
+    v := make([]float64, mtrx.m)
+    for i := 0; i < mtrx.m; i++ {
+      v[i] = mtrx.mat[i][j]
+    }
+    for i := 0; i < j; i++ {
+      R[i][j] = 0.0
+      dotp := 0.0
+      for k := 0; k < mtrx.m; k++ {
+        dotp += Q[k][i] * mtrx.mat[k][j]
+      }
+      for k := 0; k < mtrx.m; k++ {
+        v[k] -= dotp * Q[k][i]
+      }
+    }
+    vNorm := 0.0
+    for _, val := range v {
+      vNorm += val * val
+    }
+    vNorm = math.Sqrt(vNorm)
+    for i := 0; i < mtrx.m; i++ {
+      Q[i][j] = v[i] / vNorm
+    }
+    for i := 0; i < mtrx.n; i++ {
+      dotp := 0.0
+      for k := 0; k < mtrx.m; k++ {
+        dotp += Q[k][j] * mtrx.mat[k][i]
+      }
+      R[j][i] = dotp
+    }
+  }
+  return Matrix{
+    m: mtrx.m,
+    n: mtrx.n,
+    mat: Q,
+  }, Matrix{
+    m: mtrx.n,
+    n: mtrx.n,
+    mat: R,
+  }
+}
+// QR-Decomposition Algorithm for finding Eigenvalues
+func qrAlgo(mtrx Matrix, iters int) []float64 {
+  n0 := mtrx.m
+  copyMtrx, err := makeMatrix(mtrx.mat)
+  if err != nil {
+    fmt.Println(err)
+  }
+  for it := 0; it < iters; it++ {
+    Q, R := qrDecomp(copyMtrx)
+    newMtrx, err := matrixMult(R, Q)
+    if err != nil {
+      fmt.Println(err)
+    }
+    copyMtrx = newMtrx
+  }
+  eigenvals := make([]float64, n0)
+  for i := 0; i < n0; i++ {
+    eigenvals[i] = copyMtrx.mat[i][i]
+  }
+  return eigenvals
+}
+
+func getEigenVecs(mtrx Matrix) ([]Matrix, error) {
+  eigenVals := qrAlgo(mtrx, 100)
+  eigenVecs := make([]Matrix, 0)
+  for _, eigenVal := range eigenVals {
+    id := make([][]float64, mtrx.m)
+    for i := 0; i < mtrx.m; i++ {
+      id[i] = make([]float64, mtrx.m)
+      id[i][i] = 1
+    }
+    idMat := Matrix{
+      m: len(id),
+      n: len(id[0]),
+      mat: id,
+    }
+    amli, err := matrixSub(mtrx, matrixScale(idMat, eigenVal))
+    if err != nil {
+      return nil, err
+    }
+    eigenVec, err := solveHmgSys(amli)
+    if err != nil {
+      return nil, err
+    }
+    eigenVecs = append(eigenVecs, eigenVec)
+  }
+  return eigenVecs, nil
+}
+
 func matrixAdd(a,b Matrix) (Matrix, error) {	
   if a.m != b.m || a.n != b.n {
     return Matrix{}, errors.New("\n[ERROR] Can only add Matrix objects of same MxN dimensions")
@@ -83,6 +197,21 @@ func matrixSub(a,b Matrix) (Matrix, error) {
       n: a.n,
       mat: dif,
     }, nil
+  }
+}
+
+func matrixScale(mtrx Matrix, scalar float64) Matrix {
+  result := make([][]float64, mtrx.m)
+  for i := 0; i < mtrx.m; i++ {
+    result[i] = make([]float64, mtrx.n)
+    for j := 0; j < mtrx.n; j++ {
+      result[i][j] = mtrx.mat[i][j] * scalar
+    }
+  }
+  return Matrix{
+    m: mtrx.m,
+    n: mtrx.n,
+    mat: result,
   }
 }
 
@@ -214,6 +343,50 @@ func matrixInv(mtrx Matrix) (Matrix, error) {
   }, nil
 }
 
+func solveHmgSys(mtrx Matrix) (Matrix, error) {
+  augMtrx := make([][]float64, mtrx.m)
+  for i := 0; i < mtrx.m; i++ {
+    augMtrx[i] = make([]float64, mtrx.n + 1)
+    for j := 0; j < mtrx.n; j++ {
+      augMtrx[i][j] = mtrx.mat[i][j]
+    }
+  }
+  for i := 0; i < mtrx.m; i++ {
+    augMtrx[i][mtrx.n] = 0
+  }
+  for i := 0; i < mtrx.m; i++ {
+    if augMtrx[i][i] == 0 {
+      for j := i + 1; j < mtrx.m; j++ {
+        if augMtrx[j][i] != 0 {
+          augMtrx[i], augMtrx[j] = augMtrx[j], augMtrx[i]
+          break
+        }
+      }
+    }
+    factor := 1.0 / augMtrx[i][i]
+    for j := 0; j < mtrx.m; j++ {
+      augMtrx[i][j] *= factor
+    }
+    for j := 0; j < mtrx.m; j++ {
+      if j != i {
+        factor = -augMtrx[j][i]
+        for k := 0; k <= mtrx.m; k++ {
+          augMtrx[j][k] += factor * augMtrx[i][k]
+        }
+      }
+    }
+  }
+  result := make([][]float64, mtrx.m)
+  for i := 0; i < mtrx.m; i++ {
+    result[i] = make([]float64, 1)
+    result[i][0] = augMtrx[i][mtrx.n]
+  }
+  return Matrix{
+    m: mtrx.m,
+    n: 1,
+    mat: result,
+  }, nil
+}
 
 func runMatrixTest() {
   testStart := time.Now()
