@@ -2,4 +2,5 @@ Matrix data structure in go with relevant functions
 
 compile and run: cd src && go build -o main && ./main
 
-TODO: write tests for QR-Algorithm (finding eigenvals/eigenvectors)
+TODO:
+  - change functions and tests to use pointers to [][]float64 and Matrix
