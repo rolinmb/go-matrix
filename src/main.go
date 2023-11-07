@@ -388,6 +388,27 @@ func solveHmgSys(mtrx Matrix) (Matrix, error) {
   }, nil
 }
 
+func dotProduct(a,b Matrix) (Matrix, error) {
+  if a.n != b.m {
+    return Matrix{}, errors.New("Incompatable dimensions for dot product.")
+  }
+  result := make([][]float64, a.m)
+  for i := 0; i < a.m; i++ {
+    result[i] = make([]float64, b.n)
+    for j := 0; j < b.n; j++ {
+      result[i][j] = 0.0
+      for k := 0; k < a.n; k++ {
+        result[i][j] += a.mat[i][k] * b.mat[k][j]
+      }
+    }
+  }
+  return Matrix{
+    m: a.m,
+    n: b.n,
+    mat: result,
+  }, nil
+}
+
 func runMatrixTest() {
   testStart := time.Now()
   // TESTS ON INVALID STRUCTS
@@ -573,6 +594,23 @@ func runMatrixTest() {
   }
   fmt.Println("\nProduct of F * Inverse of F: ", shouldBeId)
   printMatrix(shouldBeId)
+  dataG := [][]float64 {
+    {1, 2, 3},
+    {4, 5, 6},
+  }
+  dataH := [][]float64 {
+    {7, 8},
+    {9, 10},
+    {11, 12},
+  }
+  goodMatG, _ := makeMatrix(dataG)
+  goodMatH, _ := makeMatrix(dataH)
+  dotTest, err := dotProduct(goodMatG, goodMatH)
+  if err != nil {
+    fmt.Println(err)
+  }
+  fmt.Println("\nDot Product of G & F: ", dotTest)
+  printMatrix(dotTest)
   // END OF TESTS
   testEnd := time.Now()
   testTime := testEnd.Sub(testStart).Nanoseconds()
