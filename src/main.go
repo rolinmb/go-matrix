@@ -409,6 +409,37 @@ func dotProduct(a,b Matrix) (Matrix, error) {
   }, nil
 }
 
+type Tensor struct {
+  d int
+  matrices []Matrix
+}
+
+func printTensor(tnsr Tensor) {
+  fmt.Printf("\n\nTensor (DEPTH = %d) ((", tnsr.d)
+  for i, mtrx := range tnsr.matrices {
+    fmt.Printf("\n[Matrix %d] = ",i+1)
+    printMatrix(mtrx)
+  }
+  fmt.Println("))")
+}
+
+func makeTensor(matrices []Matrix) (Tensor, error) {
+  dDepth := len(matrices)
+  if dDepth >= 1 {
+    for _, mtrx := range matrices {
+      if len(mtrx.mat) == 0 || len(mtrx.mat[0]) == 0 {
+        return Tensor{}, errors.New("\n[ERROR] All input matrices must have atleast 1 row and 1 column")
+      }
+    }
+    return Tensor{
+      d: dDepth,
+      matrices: matrices,
+    }, nil
+  } else {
+    return Tensor{}, errors.New("\n[ERROR] Tensor must have atleast 1 matrix (D >= 1)")
+  }
+}
+
 func runMatrixTest() {
   testStart := time.Now()
   // TESTS ON INVALID STRUCTS
@@ -611,6 +642,15 @@ func runMatrixTest() {
   }
   fmt.Println("\nDot Product of G & F: ", dotTest)
   printMatrix(dotTest)
+  tensorMats := []Matrix {
+    goodMatG,
+    goodMatH,
+  } 
+  testTensor, err := makeTensor(tensorMats)
+  if err != nil {
+    fmt.Println("Error: ", err)
+  }
+  printTensor(testTensor)
   // END OF TESTS
   testEnd := time.Now()
   testTime := testEnd.Sub(testStart).Nanoseconds()
