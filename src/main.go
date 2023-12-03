@@ -411,25 +411,27 @@ func dotProduct(a,b Matrix) (Matrix, error) {
 
 type Tensor struct {
   d int
-  matrices []Matrix
+  matrices [][]Matrix
 }
 
 func printTensor(tnsr Tensor) {
   fmt.Printf("\n\nTensor (DEPTH = %d) ((", tnsr.d)
-  for i, mtrx := range tnsr.matrices {
-    fmt.Printf("\n[Matrix %d] = ",i+1)
-    printMatrix(mtrx)
+  idx := 0
+  for i, mtrxSlice := range tnsr.matrices {
+    for j, mtrx := range mtrxSlice {
+      fmt.Printf("\nMatrix idx = %d => {%d, %d}:", idx, i, j)
+      printMatrix(mtrx)
+      idx++
+    }
   }
   fmt.Println("))")
 }
 
-func makeTensor(matrices []Matrix) (Tensor, error) {
+func makeTensor(matrices [][]Matrix) (Tensor, error) {
   dDepth := len(matrices)
   if dDepth >= 1 {
-    for _, mtrx := range matrices {
-      if len(mtrx.mat) == 0 || len(mtrx.mat[0]) == 0 {
-        return Tensor{}, errors.New("\n[ERROR] All input matrices must have atleast 1 row and 1 column")
-      }
+    if len(matrices[0]) == 0 || len(matrices[0][0].mat) == 0 {
+      return Tensor{}, errors.New("\n[ERROR] All input matrices must have atleast 1 row and 1 column")
     }
     return Tensor{
       d: dDepth,
@@ -438,6 +440,35 @@ func makeTensor(matrices []Matrix) (Tensor, error) {
   } else {
     return Tensor{}, errors.New("\n[ERROR] Tensor must have atleast 1 matrix (D >= 1)")
   }
+}
+
+func tensorProduct(t1,t2 Tensor) (Tensor, error) {
+  if len(t1.matrices) == 0 || len(t2.matrices) == 0 {
+    return Tensor{}, errors.New("Cannot take tensor product of empty tensor.")
+  }
+  if t1.d != t2.d {
+    return Tensor{}, errors.New("Tensor product is only defined for tensors of the same dimension / depth")
+  }
+  var result [][]Matrix
+  for _, sliceM1 := range t1.matrices {
+    var mtrxSlice []Matrix
+    for _, m1 := range sliceM1 {
+      for _, sliceM2 := range t2.matrices {
+        for _, m2 := range sliceM2 {
+          product, err := matrixMult(m1, m2)
+          if err != nil {
+            return Tensor{}, err
+          }
+          mtrxSlice = append(mtrxSlice, product)
+        }
+      }
+    }
+    result = append(result, mtrxSlice)
+  }
+  return Tensor{
+    d: t1.d,
+    matrices: result,
+  }, nil
 }
 
 func runMatrixTest() {
@@ -487,7 +518,6 @@ func runMatrixTest() {
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Matrix{}: ", goodMat0)
   printMatrix(goodMat0)  
   dataA := [][]float64 {
     {0.0, 1.0, 2.0, 3.0},
@@ -498,7 +528,6 @@ func runMatrixTest() {
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Matrix{} (A): ", goodMatA)
   printMatrix(goodMatA)
   dataB := [][]float64 {
     {-1.0, -1.0, -1.0, -1.0},
@@ -509,31 +538,30 @@ func runMatrixTest() {
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Matrix{} (B): ", goodMatB)
   printMatrix(goodMatB)
   sumMat, err := matrixAdd(goodMatA, goodMatB)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Sum Result 1 (A+B): ", sumMat)
+  fmt.Println("\nValid Sum Result 1 (A+B):")
   printMatrix(sumMat)
   sumMat, err = matrixAdd(goodMatB, goodMatA)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Sum Result 2 (B+A): ", sumMat)
+  fmt.Println("\nValid Sum Result 2 (B + A):")
   printMatrix(sumMat)
   difMatAB, err := matrixSub(goodMatA, goodMatB)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Difference Result 1 (A-B): ", difMatAB)
+  fmt.Println("\nValid Difference Result 1 (A - B):")
   printMatrix(difMatAB)
   difMatBA, err := matrixSub(goodMatB, goodMatA)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Difference Result 2 (B-A): ", difMatBA)
+  fmt.Println("\nValid Difference Result 2 (B - A):")
   printMatrix(difMatBA)
   dataC := [][]float64 {
     {0.0, 1.0, 2.0},
@@ -548,25 +576,23 @@ func runMatrixTest() {
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Matrix{} (C): ", goodMatC)
   printMatrix(goodMatC)
   goodMatD, err := makeMatrix(dataD)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Matrix{} (D): ", goodMatD)
   printMatrix(goodMatD)
   multMatCD, err := matrixMult(goodMatC, goodMatD)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Multiplication Result (C*D): ", multMatCD)
+  fmt.Println("\nValid Multiplication Result (C * D):")
   printMatrix(multMatCD)
   multMatDC, err := matrixMult(goodMatD, goodMatC)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Multiplication Result (D*C): ", multMatDC)
+  fmt.Println("\nValid Multiplication Result (D * C):")
   printMatrix(multMatDC)
   dataE := [][]float64 {
     {4.0, 3.0},
@@ -576,24 +602,23 @@ func runMatrixTest() {
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Matrix{} (E): ", goodMatE)
   printMatrix(goodMatE)
   detTestE, err := matrixDet(goodMatE)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nMatrix E Determinant: ", detTestE)
+  fmt.Printf("\nMatrix E Determinant: %f", detTestE)
   invMatE, err := matrixInv(goodMatE)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nInverse of Matrix E: ", invMatE)
+  fmt.Println("\nInverse of Matrix E:")
   printMatrix(invMatE)
   shouldBeId, err := matrixMult(goodMatE, invMatE)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nProduct of E * Inverse of E: ", shouldBeId)
+  fmt.Println("\nProduct of E * Inverse of E:")
   printMatrix(shouldBeId)
   dataF := [][]float64 {
     {2.0, 3.0, 1.0, 5.0, 4.0},
@@ -606,24 +631,24 @@ func runMatrixTest() {
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nValid Matrix{} (F): ", goodMatF)
   printMatrix(goodMatF)
   detTestF, err := matrixDet(goodMatF)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nMatrix F Determinant: ", detTestF)
+  
+  fmt.Printf("\nMatrix F Determinant: %f",detTestF)
   invMatF, err := matrixInv(goodMatF)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nInverse of Matrix F: ", invMatF)
+  fmt.Println("Inverse of Matrix F:\n")
   printMatrix(invMatF)
   shouldBeId, err = matrixMult(goodMatF, invMatF)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nProduct of F * Inverse of F: ", shouldBeId)
+  fmt.Println("\nProduct of F * Inverse of F:")
   printMatrix(shouldBeId)
   dataG := [][]float64 {
     {1, 2, 3},
@@ -634,27 +659,82 @@ func runMatrixTest() {
     {9, 10},
     {11, 12},
   }
-  goodMatG, _ := makeMatrix(dataG)
-  goodMatH, _ := makeMatrix(dataH)
+  goodMatG, err := makeMatrix(dataG)
+  if err != nil {
+    fmt.Println(err)
+  }
+  printMatrix(goodMatG)
+  goodMatH, err := makeMatrix(dataH)
+  if err != nil {
+    fmt.Println(err)
+  }
+  printMatrix(goodMatH)
   dotTest, err := dotProduct(goodMatG, goodMatH)
   if err != nil {
     fmt.Println(err)
   }
-  fmt.Println("\nDot Product of G & F: ", dotTest)
+  fmt.Println("\nDot Product of G & F:")
   printMatrix(dotTest)
-  tensorMats := []Matrix {
-    goodMatG,
-    goodMatH,
-  } 
-  testTensor, err := makeTensor(tensorMats)
+  // TENSOR TESTS
+  dataI := [][]float64 {
+    {1.0, 2.0},
+    {3.0, 4.0},
+  }
+  dataJ := [][]float64 {
+    {5.0, 6.0},
+    {7.0, 8.0},
+  }
+  dataK := [][]float64 {
+    {9.0, 10.0},
+    {11.0, 12.0},
+  }
+  dataL := [][]float64 {
+    {13.0, 14.0},
+    {15.0, 16.0},
+  }
+  goodMatI, err := makeMatrix(dataI)
   if err != nil {
     fmt.Println("Error: ", err)
   }
-  printTensor(testTensor)
+  goodMatJ, err := makeMatrix(dataJ)
+  if err != nil {
+    fmt.Println("Error: ", err)
+  }
+  goodMatK, err := makeMatrix(dataK)
+  if err != nil {
+    fmt.Println("Error: ", err)
+  }
+  goodMatL, err := makeMatrix(dataL)
+  tensorMats1 := [][]Matrix {
+    {goodMatI, goodMatJ},
+    {goodMatK, goodMatL},
+  }
+  tensorMats2 := [][]Matrix {
+    {goodMatJ, goodMatK},
+    {goodMatL, goodMatI},
+  }
+  testTensor1, err := makeTensor(tensorMats1)
+  if err != nil {
+    fmt.Println(err)
+  }
+  fmt.Println("\nTest Tensor T1:")
+  printTensor(testTensor1)
+  testTensor2, err := makeTensor(tensorMats2)
+  if err != nil {
+    fmt.Println(err)
+  }
+  fmt.Println("\nTest Tensor T2:")
+  printTensor(testTensor2)
+  prodTensor, err := tensorProduct(testTensor1, testTensor2)
+  if err != nil {
+    fmt.Println(err)
+  }
+  fmt.Println("\nTensor Product of T1 and T2:")
+  printTensor(prodTensor)
   // END OF TESTS
   testEnd := time.Now()
   testTime := testEnd.Sub(testStart).Nanoseconds()
-  fmt.Printf("runMatrixTest() Execution Time: %d nanoseconds", testTime)
+  fmt.Printf("\nrunMatrixTest() Execution Time: %d nanoseconds", testTime)
 }
 // MAIN EXECUTION
 func main() {
